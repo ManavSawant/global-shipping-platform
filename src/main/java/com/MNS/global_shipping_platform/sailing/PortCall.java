@@ -1,4 +1,4 @@
-package com.MNS.global_shipping_platform.voyage;
+package com.MNS.global_shipping_platform.sailing;
 
 import com.MNS.global_shipping_platform.port.Port;
 import jakarta.persistence.*;
@@ -16,20 +16,20 @@ import java.util.UUID;
 @Table(
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_voyage_port_sequence",
-                        columnNames = {"voyage_id", "sequence_number"}
+                        name = "uk_sailing_port_sequence",
+                        columnNames = {"sailing_id", "sequence_number"}
                 )
         }
 )
-public class VoyagePortCall {
+public class PortCall {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "voyage_id", nullable = false)
-    private Voyage voyage;
+    @JoinColumn(name = "sailing_id", nullable = false)
+    private Sailing sailing;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "port_id", nullable = false)

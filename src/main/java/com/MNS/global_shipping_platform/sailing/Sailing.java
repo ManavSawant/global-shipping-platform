@@ -1,9 +1,7 @@
-package com.MNS.global_shipping_platform.voyage;
+package com.MNS.global_shipping_platform.sailing;
 
 import com.MNS.global_shipping_platform.vessel.Vessel;
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Null;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -17,13 +15,13 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Voyage {
+public class Sailing {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false , unique = true)
-    private String voyageNumber;
+    private String sailingNumber;
 
     @Column(nullable = false)
     private LocalDateTime departureTime;
@@ -32,7 +30,7 @@ public class Voyage {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private VoyageStatus status;
+    private SailingStatus status;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -42,6 +40,6 @@ public class Voyage {
     private LocalDateTime updatedDate;
 
     @ManyToOne(fetch = FetchType.LAZY , optional = false)
-    @JoinColumn(name = "vessel_id", nullable = false)
+    @JoinColumn(name = "vessel_id")
     private Vessel vessel;
 }

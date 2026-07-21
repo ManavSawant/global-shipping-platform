@@ -2,7 +2,6 @@ package com.MNS.global_shipping_platform.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,9 +13,9 @@ import java.time.LocalDateTime;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(CustomerAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleCustomerAlreadyExistsException(CustomerAlreadyExistsException e,
-                                                                              HttpServletRequest request) {
-        ErrorResponse errorResponse = new ErrorResponse(
+    public ResponseEntity<CustomerErrorResponse> handleCustomerAlreadyExistsException(CustomerAlreadyExistsException e,
+                                                                                      HttpServletRequest request) {
+        CustomerErrorResponse customerErrorResponse = new CustomerErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
@@ -24,12 +23,12 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(errorResponse);
+                .body(customerErrorResponse);
     }
 
     @ExceptionHandler(CustomerNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleException(CustomerNotFoundException e, HttpServletRequest request) {
-        ErrorResponse errorResponse = new ErrorResponse(
+    public ResponseEntity<CustomerErrorResponse> handleException(CustomerNotFoundException e, HttpServletRequest request) {
+        CustomerErrorResponse customerErrorResponse = new CustomerErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.NOT_FOUND.value(),
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
@@ -37,7 +36,7 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(errorResponse);
+                .body(customerErrorResponse);
     }
 
 }
