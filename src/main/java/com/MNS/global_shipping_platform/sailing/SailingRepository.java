@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface SailingRepository extends JpaRepository<Sailing, UUID> {
 
     public boolean existsBySailingNumber(String sailingNumber);
+
 }

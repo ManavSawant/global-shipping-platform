@@ -23,6 +23,10 @@ public class Sailing {
     @Column(nullable = false , unique = true)
     private String sailingNumber;
 
+    @ManyToOne(fetch = FetchType.LAZY , optional = false)
+    @JoinColumn(name = "vessel_id")
+    private Vessel vessel;
+
     @Column(nullable = false)
     private LocalDateTime departureTime;
     @Column(nullable = false)
@@ -39,7 +43,5 @@ public class Sailing {
     @UpdateTimestamp
     private LocalDateTime updatedDate;
 
-    @ManyToOne(fetch = FetchType.LAZY , optional = false)
-    @JoinColumn(name = "vessel_id")
-    private Vessel vessel;
+
 }

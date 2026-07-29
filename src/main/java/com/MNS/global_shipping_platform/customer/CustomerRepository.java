@@ -19,9 +19,4 @@ public interface CustomerRepository
 
     public boolean existsByCustomerEmail(String customerEmail);
 
-    public Optional<Customer> findByCustomerId(UUID customerId);
-
-    public List<Customer> getAllCustomers();
-
-
 }

@@ -17,6 +17,7 @@ import java.util.UUID;
 public class SailingService {
     private final SailingRepository sailingRepository;
     private final VesselRepository vesselRepository;
+    private final PortCallsRepository portCallsRepository;
 
     public SailingResponse mapToSailingResponse(Sailing sailing) {
         return new SailingResponse(
@@ -82,6 +83,32 @@ public class SailingService {
         return mapToSailingResponse(savedSailing);
     }
 
-
+    public SailingResponse updateSailingStatus(UUID sailingId, SailingStatus newStatus) {
+        Sailing sailing = sailingRepository.findById(sailingId)
+                .orElseThrow(() -> new SailingNotFoundException("No Sailing found with id: " + sailingId));
+        if(sailing.getStatus() != SailingStatus.PLANNED) {
+            throw new InvalidSailingScheduleException("Only a PLANNED sailing can be changed to SCHEDULED");
+        }
+        if(newStatus != SailingStatus.SCHEDULED) {
+            throw new InvalidSailingScheduleException("PLANNED sailing can only transition to SCHEDULED");
+        }
+        if(sailing.getVessel() == null) {
+            throw new InvalidSailingScheduleException("Vessel must be assigned before sailing can be SCHEDULED");
+        }
+        List<PortCall> portCalls = portCallsRepository.findBySailingIdOrderBySequenceNumberAsc(sailingId);
+        if(portCalls.size() < 2) {
+            throw new InvalidSailingScheduleException("A sailing must have at least an origin and destination port before it can be scheduled.");
+        }
+        for(int i = 0; i < portCalls.size(); i++) {
+            PortCall sequence = portCalls.get(i);
+            if(sequence.getSequenceNumber() != i+1){
+                throw new InvalidSailingScheduleException("Sequence numbers must be continuous starting from 1.");
+            }
+        }
+        sailing.setStatus(newStatus);
+        Sailing savedSailing = sailingRepository.save(sailing);
+        return mapToSailingResponse(savedSailing);
+    }
 
 }
+
