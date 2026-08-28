@@ -1,7 +1,7 @@
 package com.MNS.global_shipping_platform.exception;
 
-import com.MNS.global_shipping_platform.customer.CustomerAlreadyExistsException;
-import com.MNS.global_shipping_platform.customer.CustomerNotFoundException;
+import com.MNS.global_shipping_platform.exception.customer.CustomerAlreadyExistsException;
+import com.MNS.global_shipping_platform.exception.customer.CustomerNotFoundException;
 import com.MNS.global_shipping_platform.exception.port.PortAlreadyExistExceptions;
 import com.MNS.global_shipping_platform.exception.port.PortNotFoundException;
 import com.MNS.global_shipping_platform.exception.sailing.InvalidSailingScheduleException;

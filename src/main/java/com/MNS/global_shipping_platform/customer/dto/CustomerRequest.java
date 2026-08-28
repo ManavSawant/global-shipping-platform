@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 
 import java.util.UUID;
 
-public record CustomerRequest(UUID id,
+public record CustomerRequest(
                               String companyName,
                               String contactPersonFirstName,
                               String contactPersonLastName,

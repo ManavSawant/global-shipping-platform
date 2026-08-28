@@ -1,7 +1,7 @@
 package com.MNS.global_shipping_platform.customer.service;
 
-import com.MNS.global_shipping_platform.customer.CustomerAlreadyExistsException;
-import com.MNS.global_shipping_platform.customer.CustomerNotFoundException;
+import com.MNS.global_shipping_platform.exception.customer.CustomerAlreadyExistsException;
+import com.MNS.global_shipping_platform.exception.customer.CustomerNotFoundException;
 import com.MNS.global_shipping_platform.customer.dto.CustomerRequest;
 import com.MNS.global_shipping_platform.customer.dto.CustomerResponse;
 import com.MNS.global_shipping_platform.customer.entity.Customer;
