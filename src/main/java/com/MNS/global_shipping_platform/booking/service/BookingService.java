@@ -24,8 +24,14 @@ import com.MNS.global_shipping_platform.sailing.entity.PortCall;
 import com.MNS.global_shipping_platform.sailing.entity.Sailing;
 import com.MNS.global_shipping_platform.sailing.repository.PortCallsRepository;
 import com.MNS.global_shipping_platform.sailing.repository.SailingRepository;
+import com.MNS.global_shipping_platform.user.UserRole;
+import com.MNS.global_shipping_platform.user.entity.User;
+import com.MNS.global_shipping_platform.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -39,6 +45,8 @@ public class BookingService {
     private final SailingRepository sailingRepository;
     private final PortCallsRepository portCallsRepository;
     private final ContainerRepository containerRepository;
+    private final UserRepository userRepository;
+    private final BookingStatusValidator bookingStatusValidator;
 
     private BookingResponse mapToResponseDTO(Booking booking) {
         return new BookingResponse(
@@ -57,9 +65,28 @@ public class BookingService {
         );
     }
 
-    public BookingResponse createBooking(BookingRequest bookingRequest) {
-        Customer customer = customerRepository.findById(bookingRequest.customerId())
-                .orElseThrow(()-> new CustomerNotFoundException("Customer Not Found with"));
+    public int calculateBookingTeu(Booking booking){
+
+        int teuPerContainer;
+        if (booking.getContainerSize() == 20){
+            teuPerContainer = 1;
+        } else if (booking.getContainerSize() == 40) {
+            teuPerContainer = 2;
+        }else{
+            throw new InvalidBookingException(
+                    "Unsupported container size: " + booking.getContainerSize()
+            );
+        }
+
+        return booking.getNumberOfContainers() * teuPerContainer;
+    }
+
+    public BookingResponse createBooking(BookingRequest bookingRequest, String email) {
+
+        Customer customer = customerRepository.findByUserEmail(email)
+                .orElseThrow(() ->
+                        new CustomerNotFoundException(
+                                "Customer profile not found for user: " + email));
 
         Port originPort = portRepository.findById(bookingRequest.originPortId())
                 .orElseThrow(()-> new PortNotFoundException("Origin Port Not Found"));
@@ -84,6 +111,7 @@ public class BookingService {
                 .destinationPort(destinationPort)
                 .cargoType(bookingRequest.cargoType())
                 .numberOfContainers(bookingRequest.numberOfContainers())
+                .containerSize(bookingRequest.containerSize())
                 .cargoWeight(bookingRequest.cargoWeight())
                 .status(BookingStatus.PENDING)
                 .build();
@@ -92,9 +120,17 @@ public class BookingService {
         return mapToResponseDTO(savedBooking);
     }
 
-    public BookingResponse getBookingsById(UUID bookingId) {
+    public BookingResponse getBookingsById(UUID bookingId, String email) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(()->new BookingNotFoundException("Booking Not Found with" + bookingId));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(()-> new UsernameNotFoundException("User not found with email" + email));
+
+        if(user.getRole() == UserRole.CUSTOMER &&
+                !booking.getCustomer().getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Your are not allowed to access this booking");
+        }
         return mapToResponseDTO(booking);
     }
 
@@ -111,14 +147,23 @@ public class BookingService {
         bookingRepository.delete(booking);
     }
 
-    public BookingResponse updateBooking(UUID bookingId, BookingUpdateRequest updateRequest) {
+    public BookingResponse updateBooking(UUID bookingId,
+                                         BookingUpdateRequest updateRequest,
+                                         String email) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(()->new BookingNotFoundException("Booking Not Found"));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(()->new UsernameNotFoundException("User not found with email" + email));
+
+        if(!booking.getCustomer().getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Your are not allowed to access this booking");
+        }
+
 
         if(booking.getStatus() != BookingStatus.PENDING) {
             throw new InvalidBookingException("Only pending booking can be updated");
         }
-
 
         if (updateRequest.originPortId() != null) {
             Port originPort = portRepository.findById(updateRequest.originPortId())
@@ -158,42 +203,57 @@ public class BookingService {
 
     public BookingResponse approveBooking(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()->new BookingNotFoundException("Booking Not Found with" + bookingId));
+                .orElseThrow(()->
+                        new BookingNotFoundException(
+                                "Booking Not Found with" + bookingId));
 
-        if(booking.getStatus() != BookingStatus.PENDING) {
-            throw new InvalidBookingException("Only pending booking can be approved");
-        }
+        bookingStatusValidator.validateTransition(
+                booking.getStatus(),
+                BookingStatus.APPROVED
+        );
+
         booking.setStatus(BookingStatus.APPROVED);
-        bookingRepository.save(booking);
-        return mapToResponseDTO(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponseDTO(savedBooking);
     }
+
     public BookingResponse rejectBooking(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(()->new BookingNotFoundException("Booking Not Found with" + bookingId));
 
-        if(booking.getStatus() != BookingStatus.PENDING) {
-            throw new InvalidBookingException("Only pending booking can be rejected");
-        }
+        bookingStatusValidator.validateTransition(
+                booking.getStatus(),
+                BookingStatus.REJECTED
+        );
+
         booking.setStatus(BookingStatus.REJECTED);
-        bookingRepository.save(booking);
-        return mapToResponseDTO(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponseDTO(savedBooking);
     }
 
     public BookingResponse cancelBooking(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()->new BookingNotFoundException("Booking Not Found with" + bookingId));
+                .orElseThrow(()->
+                        new BookingNotFoundException(
+                                "Booking Not Found with" + bookingId));
 
-        if(booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.APPROVED) {
-            throw new InvalidBookingException("Only pending booking can be cancelled");
-        }
+        bookingStatusValidator.validateTransition(
+                booking.getStatus(),
+                BookingStatus.CANCELLED
+        );
+
         booking.setStatus(BookingStatus.CANCELLED);
-        bookingRepository.save(booking);
-        return mapToResponseDTO(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponseDTO(savedBooking);
     }
 
+    @Transactional
     public BookingResponse assignSailingToBooking(UUID bookingId, UUID sailingId) {
+
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()->new BookingNotFoundException("Booking Not Found with" + bookingId));
+                .orElseThrow(()->
+                        new BookingNotFoundException(
+                                "Booking Not Found with" + bookingId));
 
         if (booking.getStatus() != BookingStatus.APPROVED) {
             throw new InvalidBookingException("Sailing can only be assigned to APPROVED booking");
@@ -204,12 +264,15 @@ public class BookingService {
         }
 
         Sailing sailing = sailingRepository.findById(sailingId)
-                .orElseThrow(()->new SailingNotFoundException("Sailing Not Found with" + sailingId));
+                .orElseThrow(()->
+                        new SailingNotFoundException(
+                                "Sailing Not Found with" + sailingId));
 
         if(sailing.getStatus() != SailingStatus.SCHEDULED){
             throw new InvalidSailingScheduleException(("Only SCHEDULED can be assigned to Booking"));
         }
 
+        // 1. Validate booking route
         UUID originPortId = booking.getOriginPort().getId();
         UUID destinationPortId = booking.getDestinationPort().getId();
 
@@ -219,6 +282,7 @@ public class BookingService {
         Integer originSequence = null;
         Integer destinationSequence = null;
         for(PortCall portCall : portCalls) {
+
             if(portCall.getPort().getId().equals(originPortId)) {
                 originSequence = portCall.getSequenceNumber();
                 break;
@@ -229,9 +293,12 @@ public class BookingService {
             throw new InvalidBookingException(
                     "Booking origin port is not part of the sailing route");
         }
+
         for(PortCall portCall : portCalls) {
+
             if(portCall.getSequenceNumber()> originSequence
                     && portCall.getPort().getId().equals(destinationPortId)) {
+
                 destinationSequence = portCall.getSequenceNumber();
                 break;
             }
@@ -242,16 +309,48 @@ public class BookingService {
                     "Booking destination port is not reachable on this sailing");
         }
 
+        // 2. Calculate already used TEU
+
+        List<Booking> existingBooking =
+                bookingRepository.findBySailingId(sailingId);
+
+        int usedTeu = existingBooking.stream()
+                .mapToInt(this::calculateBookingTeu)
+                .sum();
+
+        // 3. Calculate requested booking TEU by customer
+        int requestedTeu = calculateBookingTeu(booking);
+
+        // check the vessel capacity
+
+        int vesselCapacity =
+                sailing.getVessel().getCapacityTeu();
+
+        if (usedTeu + requestedTeu >  vesselCapacity) {
+            throw new InvalidBookingException(
+                    "Sailing does not have enough TEU capacity. "
+                            + "Available: "
+                            + (vesselCapacity - usedTeu)
+                            + "Requested TEU: "
+                            +  requestedTeu
+            );
+        }
+
         booking.setSailing(sailing);
-        bookingRepository.save(booking);
-        return  mapToResponseDTO(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponseDTO(savedBooking);
     }
 
     public BookingResponse updateBookingStatusFromContainer(UUID bookingId){
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(()->new BookingNotFoundException("Booking Not Found with" + bookingId));
 
-        List<Container> containers = containerRepository.findByBookingId(bookingId);
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(()->
+                        new BookingNotFoundException(
+                                "Booking Not Found with" + bookingId));
+
+        List<Container> containers =
+                containerRepository.findByBookingId(bookingId);
+
 
         if (containers.size() < booking.getNumberOfContainers()) {
             return mapToResponseDTO(booking);
@@ -265,15 +364,25 @@ public class BookingService {
                 .allMatch(container ->
                         container.getContainerStatus() == ContainerStatus.DELIVERED);
 
-        if(isAllInTransit){
-           booking.setStatus(BookingStatus.IN_TRANSIT);
-        } else if (isAllDelivered) {
+        if(isAllDelivered){
+            bookingStatusValidator.validateTransition(
+                    booking.getStatus(),
+                    BookingStatus.CANCELLED
+            );
+
             booking.setStatus(BookingStatus.DELIVERED);
+
+        } else if (isAllInTransit) {
+            bookingStatusValidator.validateTransition(
+                    booking.getStatus(),
+                    BookingStatus.IN_TRANSIT
+            );
+
+            booking.setStatus(BookingStatus.IN_TRANSIT);
+
         }
-        bookingRepository.save(booking);
-        return mapToResponseDTO(booking);
+
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponseDTO(savedBooking);
     }
-
-
-
 }

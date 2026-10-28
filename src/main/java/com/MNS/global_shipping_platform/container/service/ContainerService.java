@@ -107,23 +107,36 @@ public class ContainerService {
 
     public ContainerResponse assignContainerToBooking(UUID  containerId, UUID  bookingId) {
         Container container = containerRepository.findById(containerId)
-                .orElseThrow(()-> new ContainerNotFoundException("Container not found with id" + containerId));
+                .orElseThrow(()->
+                        new ContainerNotFoundException(
+                                "Container not found with id" + containerId));
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new BookingNotFoundException("Booking Not Found with " + bookingId));
+                .orElseThrow(() ->
+                        new BookingNotFoundException(
+                                "Booking Not Found with " + bookingId));
 
         if(container.getContainerStatus() != ContainerStatus.AVAILABLE){
-            throw new InvalidContainerStatusException("Only AVAILABLE containers can be assigned");
+            throw new InvalidContainerStatusException(
+                    "Only AVAILABLE containers can be assigned");
         }
 
         if(booking.getStatus() != BookingStatus.APPROVED){
-            throw new InvalidBookingStatusException("Only APPROVED booking can be assigned to the container");
+            throw new InvalidBookingStatusException(
+                    "Only APPROVED booking can be assigned to the container");
         }
 
-        int assignedContainers = containerRepository.findByBookingId(bookingId).size();
+        if (!container.getSize().equals(booking.getContainerSize())) {
+            throw new InvalidBookingException(
+                    "Container size does not match booking requirement");
+        }
+
+        int assignedContainers =
+                containerRepository.findByBookingId(bookingId).size();
 
         if (assignedContainers >= booking.getNumberOfContainers()) {
-            throw new InvalidBookingException("Required number of containers are already assigned");
+            throw new InvalidBookingException(
+                    "Required number of containers are already assigned");
         }
 
         container.setContainerStatus(ContainerStatus.ASSIGNED);
@@ -133,16 +146,33 @@ public class ContainerService {
     }
 
     public ContainerResponse loadContainer(UUID  containerId) {
+
         Container container = containerRepository.findById(containerId)
-                .orElseThrow(()-> new ContainerNotFoundException("Container not found with id" + containerId));
+                .orElseThrow(()->
+                        new ContainerNotFoundException(
+                                "Container not found with id" + containerId));
 
         if(container.getContainerStatus() != ContainerStatus.ASSIGNED){
-            throw new InvalidContainerStatusException("Only ASSIGNED containers can be loaded");
+            throw new InvalidContainerStatusException(
+                    "Only ASSIGNED containers can be loaded");
         }
 
+        Booking booking = container.getBooking();
+
+        if(booking == null){
+            throw new InvalidBookingException(
+                    "Container is not assigned to a booking");
+        }
+
+        if (booking.getSailing() == null) {
+            throw new InvalidBookingException(
+                    "Container cannot be loaded because booking has no sailing assigned");
+        }
+
+
         container.setContainerStatus(ContainerStatus.LOADED);
-        containerRepository.save(container);
-        return mapToResponseDto(container);
+        Container savedContainer = containerRepository.save(container);
+        return mapToResponseDto(savedContainer);
     }
 
     public ContainerResponse startContainerTransit(UUID containerId) {
@@ -173,8 +203,5 @@ public class ContainerService {
         bookingService.updateBookingStatusFromContainer(container.getBooking().getId());
         return mapToResponseDto(container);
     }
-
-
-
 
 }

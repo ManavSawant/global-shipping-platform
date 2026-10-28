@@ -21,6 +21,9 @@ public class Sailing {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Version
+    private Long version;
+
     @Column(nullable = false , unique = true)
     private String sailingNumber;
 

@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,30 +21,56 @@ public class VesselController {
     private final VesselService vesselService;
 
     @PostMapping
-    public ResponseEntity<VesselResponse> createVessel(@Valid @RequestBody VesselRequest vesselRequest) {
-        VesselResponse responseDto = vesselService.createVessel(vesselRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+    public ResponseEntity<VesselResponse> createVessel(
+            @Valid @RequestBody VesselRequest vesselRequest) {
+
+        VesselResponse responseDto =
+                vesselService.createVessel(vesselRequest);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(responseDto);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<VesselResponse> getVessel(@PathVariable UUID id) {
-        return ResponseEntity.ok(vesselService.getVesselById(id));
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+    public ResponseEntity<VesselResponse> getVessel(
+            @PathVariable UUID id) {
+
+        return ResponseEntity.ok(
+                vesselService.getVesselById(id)
+        );
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     public ResponseEntity<List<VesselResponse>> getAllVessel() {
-        return ResponseEntity.ok(vesselService.getAllVessels());
+
+        return ResponseEntity.ok(
+                vesselService.getAllVessels()
+        );
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<VesselResponse> updateVessel(@PathVariable UUID id, @Valid @RequestBody VesselRequest vesselRequest) {
-        return ResponseEntity.ok(vesselService.updateVessel(id, vesselRequest));
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+    public ResponseEntity<VesselResponse> updateVessel(
+            @PathVariable UUID id,
+            @Valid @RequestBody VesselRequest vesselRequest) {
+
+        return ResponseEntity.ok(
+                vesselService.updateVessel(id, vesselRequest)
+        );
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteVessel(
+            @PathVariable UUID id) {
 
-    public ResponseEntity<Void> deleteVessel(@PathVariable UUID id) {
         vesselService.deleteVessel(id);
+
         return ResponseEntity.noContent().build();
     }
 }
+

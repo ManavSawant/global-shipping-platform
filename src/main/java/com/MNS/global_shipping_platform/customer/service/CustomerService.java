@@ -6,7 +6,12 @@ import com.MNS.global_shipping_platform.customer.dto.CustomerRequest;
 import com.MNS.global_shipping_platform.customer.dto.CustomerResponse;
 import com.MNS.global_shipping_platform.customer.entity.Customer;
 import com.MNS.global_shipping_platform.customer.repository.CustomerRepository;
+import com.MNS.global_shipping_platform.user.UserRole;
+import com.MNS.global_shipping_platform.user.entity.User;
+import com.MNS.global_shipping_platform.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,6 +23,7 @@ import java.util.UUID;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final UserRepository userRepository;
 
     private CustomerResponse mapToResponseDTO(Customer customer) {
         return new CustomerResponse(
@@ -51,9 +57,17 @@ public class CustomerService {
         return mapToResponseDTO(savedCustomer);
     }
 
-    public CustomerResponse findByCustomerId(UUID customerId) {
+    public CustomerResponse findByCustomerId(UUID customerId, String email) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException("No Customer found with id: " + customerId));
+
+        User user = userRepository.findByEmail(email).orElseThrow(() ->
+                new UsernameNotFoundException(
+                        "No Customer found with email: " + email));
+
+        if(user.getRole() == UserRole.CUSTOMER && !customer.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Your are not allowed to access this customer");
+        }
 
         return mapToResponseDTO(customer);
     }
@@ -64,10 +78,17 @@ public class CustomerService {
                 .toList();
     }
 
-    public CustomerResponse updateCustomer(UUID customerId, CustomerRequest request) {
+    public CustomerResponse updateCustomer(UUID customerId, CustomerRequest request, String email) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() ->
                         new CustomerNotFoundException("No Customer found with id: " + customerId));
+
+        User user = userRepository.findByEmail(email).orElseThrow(() ->new UsernameNotFoundException("No User found with email: " + email));
+
+        if(user.getRole() == UserRole.CUSTOMER && !customer.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Your are not allowed to access this customer");
+        }
+
 
         customerRepository.findByCustomerEmail(request.customerEmail())
                 .ifPresent(existingCustomerWithEmail  -> {
@@ -91,5 +112,37 @@ public class CustomerService {
                 new CustomerNotFoundException("No Customer found with id: " + customerId));
         customerRepository.delete(customer);
 
+    }
+
+    public CustomerResponse createMyCustomerProfile(
+            CustomerRequest request,
+            String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new UsernameNotFoundException(
+                                "User not found with email: " + email));
+
+        Optional<Customer> existingCustomer =
+                customerRepository.findByUser(user);
+
+        if (existingCustomer.isPresent()) {
+            throw new CustomerAlreadyExistsException(
+                    "Customer profile already exists for: " + email);
+        }
+
+        Customer newCustomer = Customer.builder()
+                .companyName(request.companyName())
+                .contactPersonFirstName(request.contactPersonFirstName())
+                .contactPersonLastName(request.contactPersonLastName())
+                .customerEmail(request.customerEmail())
+                .phoneNumber(request.phoneNumber())
+                .customerType(request.customerType())
+                .user(user)
+                .build();
+
+        Customer savedCustomer = customerRepository.save(newCustomer);
+
+        return mapToResponseDTO(savedCustomer);
     }
 }

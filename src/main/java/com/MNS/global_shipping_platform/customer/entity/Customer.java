@@ -1,6 +1,7 @@
 package com.MNS.global_shipping_platform.customer.entity;
 
 import com.MNS.global_shipping_platform.customer.CustomerType;
+import com.MNS.global_shipping_platform.user.entity.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -45,4 +46,7 @@ public class Customer {
     @UpdateTimestamp
     private LocalDateTime updatedDate;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }

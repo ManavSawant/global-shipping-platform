@@ -48,6 +48,8 @@ public class Booking {
 
     private Integer cargoWeight;
 
+    private Integer containerSize;
+
     private Integer numberOfContainers;
 
     @Enumerated(EnumType.STRING)
@@ -57,6 +59,4 @@ public class Booking {
     private LocalDateTime createDate;
     @UpdateTimestamp
     private LocalDateTime updateDate;
-
-
 }

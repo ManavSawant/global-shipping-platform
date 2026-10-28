@@ -27,6 +27,7 @@ public class SailingService {
     private final SailingRepository sailingRepository;
     private final VesselRepository vesselRepository;
     private final PortCallsRepository portCallsRepository;
+    private final SailingStatusValidator sailingStatusValidator;
 
     private SailingResponse mapToSailingResponse(Sailing sailing) {
         return new SailingResponse(
@@ -117,9 +118,10 @@ public class SailingService {
         Sailing sailing = sailingRepository.findById(sailingId)
                 .orElseThrow(() -> new SailingNotFoundException("No Sailing found with id: " + sailingId));
 
-        if(sailing.getStatus() != SailingStatus.PLANNED) {
-            throw new InvalidSailingScheduleException("Only a PLANNED sailing can be scheduled.");
-        }
+        sailingStatusValidator.validateTransition(
+                sailing.getStatus(),
+                SailingStatus.SCHEDULED
+        );
 
         if (sailing.getVessel() == null) {
             throw new InvalidSailingScheduleException(
@@ -127,21 +129,82 @@ public class SailingService {
         }
 
         if(sailing.getVessel().getStatus() != VesselStatus.AVAILABLE) {
-            throw new InvalidSailingScheduleException("Assigned vessel is not available for sailing.");
+            throw new InvalidSailingScheduleException(
+                    "Assigned vessel is not available for sailing.");
         }
 
         List<PortCall> portCalls = portCallsRepository.findBySailingIdOrderBySequenceNumberAsc(sailing.getId());
         if(portCalls.size() < 2) {
-            throw new InvalidSailingScheduleException("A sailing must have at least an origin and destination port before it can be scheduled.");
+            throw new InvalidSailingScheduleException(
+                    "A sailing must have at least an origin and destination port before it can be scheduled.");
         }
+
         for(int i = 0; i < portCalls.size(); i++) {
             PortCall portCall = portCalls.get(i);
             if(portCall.getSequenceNumber() != i + 1){
-                throw new InvalidSailingScheduleException("Sequence numbers must be continuous starting from 1.");
+                throw new InvalidSailingScheduleException(
+                        "Sequence numbers must be continuous starting from 1.");
             }
         }
         sailing.setStatus(SailingStatus.SCHEDULED);
         Sailing savedSailing = sailingRepository.save(sailing);
+        return mapToSailingResponse(savedSailing);
+    }
+
+    public SailingResponse startSailing(UUID sailingId) {
+
+        Sailing sailing = sailingRepository.findById(sailingId)
+                .orElseThrow(() ->
+                        new SailingNotFoundException(
+                                "No Sailing found with id: " + sailingId));
+
+        sailingStatusValidator.validateTransition(
+                sailing.getStatus(),
+                SailingStatus.IN_PROGRESS
+        );
+
+        sailing.setStatus(SailingStatus.IN_PROGRESS);
+
+        Sailing savedSailing = sailingRepository.save(sailing);
+
+        return mapToSailingResponse(savedSailing);
+    }
+
+    public SailingResponse completeSailing(UUID sailingId) {
+
+        Sailing sailing = sailingRepository.findById(sailingId)
+                .orElseThrow(() ->
+                        new SailingNotFoundException(
+                                "No Sailing found with id: " + sailingId));
+
+        sailingStatusValidator.validateTransition(
+                sailing.getStatus(),
+                SailingStatus.COMPLETED
+        );
+
+        sailing.setStatus(SailingStatus.COMPLETED);
+
+        Sailing savedSailing = sailingRepository.save(sailing);
+
+        return mapToSailingResponse(savedSailing);
+    }
+
+    public SailingResponse cancelSailing(UUID sailingId) {
+
+        Sailing sailing = sailingRepository.findById(sailingId)
+                .orElseThrow(() ->
+                        new SailingNotFoundException(
+                                "No Sailing found with id: " + sailingId));
+
+        sailingStatusValidator.validateTransition(
+                sailing.getStatus(),
+                SailingStatus.CANCELLED
+        );
+
+        sailing.setStatus(SailingStatus.CANCELLED);
+
+        Sailing savedSailing = sailingRepository.save(sailing);
+
         return mapToSailingResponse(savedSailing);
     }
 
