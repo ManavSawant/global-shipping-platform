@@ -55,8 +55,15 @@ public class ContainerServiceTest {
     @Test
     void loadContainer_shouldChangeAssignedToLoad(){
         UUID containerId = UUID.randomUUID();
+        Booking booking = Booking.builder()
+                .id(UUID.randomUUID())
+                .sailing(com.MNS.global_shipping_platform.sailing.entity.Sailing.builder()
+                        .id(UUID.randomUUID())
+                        .build())
+                .build();
         Container container = Container.builder()
                 .id(containerId)
+                .booking(booking)
                 .containerNumber("MNSU1000")
                 .containerType(ContainerType.DRY_STORAGE)
                 .size(20)
@@ -65,6 +72,7 @@ public class ContainerServiceTest {
 
         when(containerRepository.findById(containerId))
                 .thenReturn(Optional.of(container));
+        when(containerRepository.save(container)).thenReturn(container);
 
         ContainerResponse response = containerService.loadContainer(containerId);
 
@@ -111,6 +119,7 @@ public class ContainerServiceTest {
                 .containerType(ContainerType.DRY_STORAGE)
                 .size(20)
                 .containerStatus(ContainerStatus.LOADED)
+                .booking(booking)
                 .build();
 
         when(containerRepository.findById(containerId))

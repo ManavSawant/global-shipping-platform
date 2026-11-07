@@ -18,6 +18,7 @@ import com.MNS.global_shipping_platform.exception.container.ContainerNotFoundExc
 import com.MNS.global_shipping_platform.exception.container.InvalidContainerStatusException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -105,6 +106,7 @@ public class ContainerService {
         containerRepository.delete(container);
     }
 
+    @Transactional
     public ContainerResponse assignContainerToBooking(UUID  containerId, UUID  bookingId) {
         Container container = containerRepository.findById(containerId)
                 .orElseThrow(()->
@@ -145,6 +147,7 @@ public class ContainerService {
         return mapToResponseDto(container);
     }
 
+    @Transactional
     public ContainerResponse loadContainer(UUID  containerId) {
 
         Container container = containerRepository.findById(containerId)
@@ -175,6 +178,7 @@ public class ContainerService {
         return mapToResponseDto(savedContainer);
     }
 
+    @Transactional
     public ContainerResponse startContainerTransit(UUID containerId) {
         Container container = containerRepository.findById(containerId)
                 .orElseThrow(()-> new ContainerNotFoundException("Container not found with id" + containerId));
@@ -190,6 +194,7 @@ public class ContainerService {
         return mapToResponseDto(container);
     }
 
+    @Transactional
     public ContainerResponse deliverContainer(UUID  containerId) {
         Container container = containerRepository.findById(containerId)
                 .orElseThrow(()-> new ContainerNotFoundException("Container not found with id" + containerId));

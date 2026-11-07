@@ -5,6 +5,7 @@ import com.MNS.global_shipping_platform.port.entity.Port;
 import com.MNS.global_shipping_platform.port.repository.PortRepository;
 import com.MNS.global_shipping_platform.exception.sailing.InvalidSailingScheduleException;
 import com.MNS.global_shipping_platform.exception.sailing.SailingNotFoundException;
+import com.MNS.global_shipping_platform.exception.portCalls.InvalidPortCallException;
 import com.MNS.global_shipping_platform.sailing.SailingStatus;
 import com.MNS.global_shipping_platform.sailing.dto.PortCallRequest;
 import com.MNS.global_shipping_platform.sailing.dto.PortCallResponse;
@@ -43,16 +44,23 @@ public class PortCallService {
     public PortCallResponse createPortCall(PortCallRequest portCallRequest) {
 
         Sailing sailing = sailingRepository.findById(portCallRequest.sailingId())
-                .orElseThrow(() -> new SailingNotFoundException("Sailing not found"));
+                .orElseThrow(() ->
+                        new SailingNotFoundException(
+                                "Sailing not found"));
 
         if (sailing.getStatus() != SailingStatus.PLANNED){
             throw new InvalidSailingScheduleException("Invalid sailing schedule");
         }
-        Port port = portRepository.findById(portCallRequest.portId())
-                .orElseThrow(()-> new PortNotFoundException("Port not found with id " + portCallRequest.portId()));
 
-        if (portCallRequest.sequenceNumber() <= 0){
-            throw new RuntimeException("Sequence number must be greater than zero");
+        Port port = portRepository.findById(portCallRequest.portId())
+                .orElseThrow(()->
+                        new PortNotFoundException(
+                                "Port not found with id " + portCallRequest.portId()));
+
+        if (portCallRequest.sequenceNumber() == null
+                ||portCallRequest.sequenceNumber() <= 0) {
+            throw new InvalidPortCallException(
+                    "Sequence number must be greater than zero");
         }
 
         if (portCallsRepository.existsBySailingIdAndSequenceNumber(

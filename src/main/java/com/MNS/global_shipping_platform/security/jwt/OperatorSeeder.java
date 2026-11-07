@@ -5,6 +5,7 @@ import com.MNS.global_shipping_platform.user.entity.User;
 import com.MNS.global_shipping_platform.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -16,24 +17,33 @@ public class OperatorSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${OPERATOR_PASSWORD:}")
+    private String operatorPassword;
 
     @Override
-    public void run(String @NonNull ... args) throws Exception {
+    public void run(String @NonNull ... args) {
 
-        String email = "operator@mnsshiping.com";
+        if (operatorPassword == null || operatorPassword.isBlank()) {
+            System.out.println(
+                    "OPERATOR_PASSWORD is not set; skipping OPERATOR seeding."
+            );
+            return;
+        }
 
-        if(userRepository.existsByEmail(email)){
+        String email = "operator@mnsshipping.com";
+
+        if (userRepository.existsByEmail(email)) {
             return;
         }
 
         User operator = User.builder()
                 .email(email)
-                .password(passwordEncoder.encode("operator123"))
+                .password(passwordEncoder.encode(operatorPassword))
                 .role(UserRole.OPERATOR)
                 .build();
+
         userRepository.save(operator);
 
-        System.out.println("Default OPERATOR user created: " + email);
-
+        System.out.println("OPERATOR user created: " + email);
     }
 }

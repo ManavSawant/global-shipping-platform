@@ -4,6 +4,7 @@ import com.MNS.global_shipping_platform.sailing.entity.Sailing;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -18,6 +19,6 @@ public interface SailingRepository extends JpaRepository<Sailing, UUID> {
     boolean existsBySailingNumberAndIdNot(String sailingNumber, UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Sailing s WHERE s.id = :id")
     Optional<Sailing> findByIdForUpdate(@Param("id") UUID id);
-
 }

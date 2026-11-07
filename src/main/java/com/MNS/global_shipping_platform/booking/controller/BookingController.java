@@ -91,9 +91,13 @@ public class BookingController {
     @PreAuthorize("hasRole('CUSTOMER')")
     @PatchMapping("/{id}/cancel")
     public BookingResponse cancelBooking(
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            Authentication authentication) {
 
-        return bookingService.cancelBooking(id);
+        return bookingService.cancelBooking(
+                id,
+                authentication.getName()
+        );
     }
 
     @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")

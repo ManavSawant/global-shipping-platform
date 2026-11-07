@@ -19,7 +19,8 @@ public class BookingStatusValidator {
                         || newStatus == BookingStatus.CANCELLED;
 
             case APPROVED ->
-                newStatus == BookingStatus.CANCELLED;
+                    newStatus == BookingStatus.IN_TRANSIT
+                            ||newStatus == BookingStatus.CANCELLED;
 
             case IN_TRANSIT ->
                 newStatus == BookingStatus.DELIVERED;
